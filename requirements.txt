@@ -1,0 +1,3 @@
+setuptools
+google-cloud-firestore
+schema
