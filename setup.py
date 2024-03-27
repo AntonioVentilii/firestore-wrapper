@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='firestore_wrapper',
-    version='0.2.0',
+    version='0.2.1',
     packages=find_packages(),
     description='A custom wrapper for Google Firestore.',
     long_description=open('README.md').read(),
@@ -20,4 +20,9 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.7',
+    url='https://github.com/AntonioVentilii/firestore-wrapper',
+    project_urls={
+        'Source Code': 'https://github.com/AntonioVentilii/firestore-wrapper',
+        'Issue Tracker': 'https://github.com/AntonioVentilii/firestore-wrapper/issues',
+    }
 )
