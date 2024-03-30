@@ -24,5 +24,6 @@ setup(
     project_urls={
         'Source Code': 'https://github.com/AntonioVentilii/firestore-wrapper',
         'Issue Tracker': 'https://github.com/AntonioVentilii/firestore-wrapper/issues',
-    }
+    },
+    keywords='firestore api wrapper database',
 )
