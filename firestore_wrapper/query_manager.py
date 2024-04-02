@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from google.cloud.firestore_v1 import FieldFilter
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from .firestore_base import FirestoreBase
 

@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='firestore_wrapper',
-    version='0.2.2',
+    version='0.2.3',
     packages=find_packages(),
     description='A custom wrapper for Google Firestore.',
     long_description=open('README.md').read(),
@@ -11,7 +11,7 @@ setup(
     author_email='antonioventilii@gmail.com',
     license='MIT',
     install_requires=[
-        'google-cloud-firestore>=2.1.0',
+        'google-cloud-firestore>=2.5.0',
         'schema',
     ],
     classifiers=[
