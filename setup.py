@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='firestore_wrapper',
-    version='0.2.3',
+    version='0.2.4',
     packages=find_packages(),
     description='A custom wrapper for Google Firestore.',
     long_description=open('README.md').read(),
