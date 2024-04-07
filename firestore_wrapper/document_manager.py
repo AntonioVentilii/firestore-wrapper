@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Callable
 
-from google.cloud.firestore_v1 import DocumentSnapshot
+from google.cloud.firestore_v1 import DocumentReference, DocumentSnapshot
 
 from .firestore_base import FirestoreBase
+
+Validator = Callable[[dict], None]
 
 
 class DocumentManager(FirestoreBase):
@@ -18,8 +20,23 @@ class DocumentManager(FirestoreBase):
         """
         super().__init__(credentials_path=credentials_path, database=database)
 
+    def create_doc_ref(self, collection_name: str, document_name: str = None,
+                       parent_ref: DocumentReference = None) -> DocumentReference:
+        """
+        Creates a document reference for a specific document in a collection.
+
+        :param collection_name: The name of the collection.
+        :param document_name: Optional name of the document.
+        :param parent_ref: Optional parent document reference.
+
+        :return: A DocumentReference object for the specified document.
+        """
+        parent_ref = parent_ref or self.db
+        return parent_ref.collection(collection_name).document(document_name)
+
     def add_document(self, collection_name: str, data: dict, document_name: str = None, id_as_name: bool = False,
-                     validator: Callable[[dict], None] = None, merge_if_existing: bool = False) -> str:
+                     validator: Validator = None, merge_if_existing: bool = False,
+                     parent_ref: DocumentReference = None) -> str:
         """
         Adds a new document to a specified collection.
 
@@ -29,6 +46,7 @@ class DocumentManager(FirestoreBase):
         :param id_as_name: If True, a unique ID will be generated for the document name.
         :param validator: Optional callable that validates the data dictionary.
         :param merge_if_existing: If True, merge data into an existing document instead of overwriting.
+        :param parent_ref: Optional parent document reference for the new document.
 
         :return: The name of the document.
         """
@@ -38,13 +56,14 @@ class DocumentManager(FirestoreBase):
             raise ValueError('document_name will be ignored if id_as_name is True')
         if validator:
             validator(data)
+        parent_ref = parent_ref or self.db
         if id_as_name:
-            document_name = self.db.collection(collection_name).document().id
-        self.db.collection(collection_name).document(document_name).set(data, merge=merge_if_existing)
+            document_name = parent_ref.collection(collection_name).document().id
+        parent_ref.collection(collection_name).document(document_name).set(data, merge=merge_if_existing)
         return document_name
 
     def add_documents_batch(self, collection_name: str, data_list: list[dict], document_names: list[str] = None,
-                            validator: Callable[[dict], None] = None, overwrite: bool = False, verbose: bool = False):
+                            validator: Validator = None, overwrite: bool = False, verbose: bool = False):
         """
         Adds or updates multiple documents in a specified collection using batch operations.
 
@@ -84,22 +103,26 @@ class DocumentManager(FirestoreBase):
             except Exception as e:
                 print(f"Batch {chunk_index + 1} write failed: {e}")
 
-    def add_data(self, collection_name: str, data: dict):
-        self.db.collection(collection_name).add(data)
+    def add_data(self, collection_name: str, data: dict, parent_ref: DocumentReference = None):
+        parent_ref = parent_ref or self.db
+        parent_ref.collection(collection_name).add(data)
 
-    def get_document(self, collection_name: str, document_name: str) -> DocumentSnapshot:
+    def get_document(self, collection_name: str, document_name: str,
+                     parent_ref: DocumentReference = None) -> DocumentSnapshot:
         """
         Retrieves a document from a specified collection.
 
         :param collection_name: The name of the collection.
         :param document_name: The name of the document to retrieve.
+        :param parent_ref: Optional parent document reference.
 
         :return: A DocumentSnapshot object of the retrieved document.
         """
-        return self.db.collection(collection_name).document(document_name).get()
+        parent_ref = parent_ref or self.db
+        return parent_ref.collection(collection_name).document(document_name).get()
 
-    def update_document(self, collection_name: str, document_name: str, data: dict,
-                        validator: Callable[[dict], None] = None, create_if_missing: bool = False):
+    def update_document(self, collection_name: str, document_name: str, data: dict, validator: Validator = None,
+                        create_if_missing: bool = False, parent_ref: DocumentReference = None):
         """
         Updates a document in a specified collection. Optionally creates the document if it does not exist.
 
@@ -108,44 +131,54 @@ class DocumentManager(FirestoreBase):
         :param data: The data to update the document with.
         :param validator: Optional callable to validate the data dictionary.
         :param create_if_missing: If True, create the document if it does not exist.
+        :param parent_ref: Optional parent document reference.
         """
         if create_if_missing:
-            return self.add_document(collection_name, data, document_name, validator=validator, merge_if_existing=True)
+            return self.add_document(collection_name, data, document_name, validator=validator, merge_if_existing=True,
+                                     parent_ref=parent_ref)
         else:
             if validator:
                 validator(data)
-            self.db.collection(collection_name).document(document_name).update(data)
+            parent_ref = parent_ref or self.db
+            parent_ref.collection(collection_name).document(document_name).update(data)
 
-    def delete_document(self, collection_name: str, document_name: str):
+    def delete_document(self, collection_name: str, document_name: str, parent_ref: DocumentReference = None):
         """
         Deletes a specific document from a collection.
 
         :param collection_name: The name of the collection containing the document.
         :param document_name: The name of the document to delete.
+        :param parent_ref: Optional parent document reference.
         """
-        self.db.collection(collection_name).document(document_name).delete()
+        parent_ref = parent_ref or self.db
+        parent_ref.collection(collection_name).document(document_name).delete()
 
-    def get_document_names(self, collection_name: str) -> list[str]:
+    def get_document_names(self, collection_name: str, parent_ref: DocumentReference = None) -> list[str]:
         """
         Retrieves the names of all documents in a specified collection.
 
         :param collection_name: The name of the collection.
+        :param parent_ref: Optional parent document reference.
 
         :return: A list of document names in the specified collection.
         """
-        return [doc.id for doc in self.db.collection(collection_name).stream()]
+        parent_ref = parent_ref or self.db
+        return [doc.id for doc in parent_ref.collection(collection_name).stream()]
 
-    def get_document_data(self, collection_name: str, document_name: str, with_id: bool = False) -> dict:
+    def get_document_data(self, collection_name: str, document_name: str, with_id: bool = False,
+                          parent_ref: DocumentReference = None) -> dict:
         """
         Retrieves the data of a specified document in a collection.
 
         :param collection_name: The name of the collection.
         :param document_name: The name of the document.
         :param with_id: If True, includes the document's ID in the returned dictionary.
+        :param parent_ref: Optional parent document reference.
 
         :return: A dictionary containing the document's data.
         """
-        document = self.db.collection(collection_name).document(document_name).get()
+        parent_ref = parent_ref or self.db
+        document = parent_ref.collection(collection_name).document(document_name).get()
         if with_id:
             return {'id': document.id, **document.to_dict()}
         else:

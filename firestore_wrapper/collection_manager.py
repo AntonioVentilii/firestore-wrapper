@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from google.cloud.firestore_v1 import DocumentSnapshot
+from google.cloud.firestore_v1 import DocumentReference, DocumentSnapshot
 
 from .firestore_base import FirestoreBase
 
@@ -19,84 +19,101 @@ class CollectionManager(FirestoreBase):
         if collections:
             self.init_collections(collections)
 
-    def add_collection(self, collection_name: str):
+    def add_collection(self, collection_name: str, parent_ref: DocumentReference = None):
         """
         Adds a new collection to the Firestore database.
 
         :param collection_name: The name of the collection to add.
+        :param parent_ref: Optional parent collection reference.
         """
-        self.db.collection(collection_name)
+        parent_ref = parent_ref or self.db
+        parent_ref.collection(collection_name)
 
-    def init_collections(self, collections: list[str]):
+    def init_collections(self, collections: list[str], parent_ref: DocumentReference = None):
         """
         Initializes multiple collections in the Firestore database.
 
         :param collections: A list of collection names to initialize.
+        :param parent_ref: Optional parent collection reference.
         """
         for collection in collections:
-            self.add_collection(collection)
+            self.add_collection(collection, parent_ref=parent_ref)
 
-    def get_collection(self, collection_name: str) -> list[DocumentSnapshot]:
+    def get_collection(self, collection_name: str, parent_ref: DocumentReference = None) -> list[DocumentSnapshot]:
         """
         Retrieves all documents from a specified collection.
 
         :param collection_name: The name of the collection to retrieve documents from.
+        :param parent_ref: Optional parent collection reference.
 
         :return: A list of DocumentSnapshot objects for each document in the collection.
         """
-        return self.db.collection(collection_name).get()
+        parent_ref = parent_ref or self.db
+        return parent_ref.collection(collection_name).get()
 
-    def delete_collection(self, collection_name: str):
+    def delete_collection(self, collection_name: str, parent_ref: DocumentReference = None):
         """
         Deletes an entire collection, including all documents within it.
 
         :param collection_name: The name of the collection to delete.
+        :param parent_ref: Optional parent collection reference.
         """
-        docs = self.db.collection(collection_name).stream()
+        parent_ref = parent_ref or self.db
+        docs = parent_ref.collection(collection_name).stream()
         for doc in docs:
             doc.reference.delete()
 
-    def get_collection_size(self, collection_name: str) -> int:
+    def get_collection_size(self, collection_name: str, parent_ref: DocumentReference = None) -> int:
         """
         Returns the number of documents in a collection.
 
         :param collection_name: The name of the collection.
+        :param parent_ref: Optional parent collection reference.
 
         :return: The number of documents in the specified collection.
         """
-        return len(self.db.collection(collection_name).get())
+        parent_ref = parent_ref or self.db
+        return len(parent_ref.collection(collection_name).get())
 
-    def get_collection_names(self) -> list[str]:
+    def get_collection_names(self, parent_ref: DocumentReference = None) -> list[str]:
         """
         Retrieves the names of all collections in the Firestore database.
 
+        :param parent_ref: Optional parent collection reference.
+
         :return: A list of collection names.
         """
-        return [collection.id for collection in self.db.collections()]
+        parent_ref = parent_ref or self.db
+        return [collection.id for collection in parent_ref.collections()]
 
-    def get_collection_data(self, collection_name: str, with_id: bool = False) -> list[dict]:
+    def get_collection_data(self, collection_name: str, with_id: bool = False,
+                            parent_ref: DocumentReference = None) -> list[dict]:
         """
         Retrieves data for all documents in a specified collection.
 
         :param collection_name: The name of the collection.
         :param with_id: If True, includes each document's ID with its data.
+        :param parent_ref: Optional parent collection reference.
 
         :return: A list of dictionaries, each containing data for a document in the collection.
         """
-        collection = self.db.collection(collection_name).stream()
+        parent_ref = parent_ref or self.db
+        collection = parent_ref.collection(collection_name).stream()
         if with_id:
             return [{'id': doc.id, **doc.to_dict()} for doc in collection]
         else:
             return [doc.to_dict() for doc in collection]
 
-    def get_collection_data_as_dict(self, collection_name: str) -> dict:
+    def get_collection_data_as_dict(self, collection_name: str, parent_ref: DocumentReference = None) -> dict:
         """
         Retrieves data for all documents in a specified collection, organized as a dictionary.
 
         :param collection_name: The name of the collection.
+        :param parent_ref: Optional parent collection reference.
 
         :return: A dictionary with document IDs as keys and document data dictionaries as values.
         """
-        collection = self.db.collection(collection_name).stream()
+        parent_ref = parent_ref or self.db
+        collection = parent_ref.collection(collection_name).stream()
         ret = {doc.id: doc.to_dict() for doc in collection}
         return ret
