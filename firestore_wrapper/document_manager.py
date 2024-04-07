@@ -63,7 +63,8 @@ class DocumentManager(FirestoreBase):
         return document_name
 
     def add_documents_batch(self, collection_name: str, data_list: list[dict], document_names: list[str] = None,
-                            validator: Validator = None, overwrite: bool = False, verbose: bool = False):
+                            validator: Validator = None, overwrite: bool = False, verbose: bool = False,
+                            parent_ref: DocumentReference = None):
         """
         Adds or updates multiple documents in a specified collection using batch operations.
 
@@ -74,7 +75,8 @@ class DocumentManager(FirestoreBase):
         :param overwrite: If True, existing documents will be overwritten. If False, they will be ignored.
         :param verbose: If True, print additional information during the operation.
         """
-        existing_doc_names = self.get_document_names(collection_name)
+        parent_ref = parent_ref or self.db
+        existing_doc_names = self.get_document_names(collection_name, parent_ref=parent_ref)
         max_batch_size = 500  # Firestore's limit
 
         chunks = [data_list[i:i + max_batch_size] for i in range(0, len(data_list), max_batch_size)]
@@ -82,7 +84,7 @@ class DocumentManager(FirestoreBase):
                        range(0, len(document_names or []), max_batch_size)]
 
         for chunk_index, chunk in enumerate(chunks):
-            batch = self.db.batch()
+            batch = parent_ref.batch()
             names_chunk = name_chunks[chunk_index] if name_chunks else [None] * len(chunk)
 
             for index, data in enumerate(chunk):
@@ -91,7 +93,7 @@ class DocumentManager(FirestoreBase):
 
                 document_name = names_chunk[index] if names_chunk else None
                 if document_name is None or document_name not in existing_doc_names or overwrite:
-                    doc_ref = self.db.collection(collection_name).document(document_name)
+                    doc_ref = parent_ref.collection(collection_name).document(document_name)
                     batch.set(doc_ref, data)
                 elif verbose:
                     print(f"Document with name '{document_name}' already exists. Skipping...")
