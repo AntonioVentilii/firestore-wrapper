@@ -4,12 +4,12 @@ from typing import Callable
 
 from google.cloud.firestore_v1 import DocumentReference, DocumentSnapshot
 
-from .firestore_base import FirestoreBase
+from .collection_manager import CollectionManager
 
 Validator = Callable[[dict], None]
 
 
-class DocumentManager(FirestoreBase):
+class DocumentManager(CollectionManager):
 
     def __init__(self, credentials_path: str, database: str = None):
         """
@@ -74,6 +74,7 @@ class DocumentManager(FirestoreBase):
         :param validator: Optional callable to validate each document's data.
         :param overwrite: If True, existing documents will be overwritten. If False, they will be ignored.
         :param verbose: If True, print additional information during the operation.
+        :param parent_ref: Optional parent document reference.
         """
         parent_ref = parent_ref or self.db
         existing_doc_names = self.get_document_names(collection_name, parent_ref=parent_ref)
@@ -168,7 +169,7 @@ class DocumentManager(FirestoreBase):
         return [doc.id for doc in parent_ref.collection(collection_name).stream()]
 
     def get_document_data(self, collection_name: str, document_name: str, with_id: bool = False,
-                          parent_ref: DocumentReference = None) -> dict:
+                          parent_ref: DocumentReference = None, with_subcollections: bool = False) -> dict:
         """
         Retrieves the data of a specified document in a collection.
 
@@ -176,12 +177,24 @@ class DocumentManager(FirestoreBase):
         :param document_name: The name of the document.
         :param with_id: If True, includes the document's ID in the returned dictionary.
         :param parent_ref: Optional parent document reference.
+        :param with_subcollections: If True, includes data for all subcollections.
 
         :return: A dictionary containing the document's data.
         """
         parent_ref = parent_ref or self.db
         document = parent_ref.collection(collection_name).document(document_name).get()
+        data = document.to_dict()
         if with_id:
-            return {'id': document.id, **document.to_dict()}
-        else:
-            return document.to_dict()
+            data['id'] = document.id
+        if with_subcollections:
+            doc_ref = self.create_doc_ref(collection_name, document_name, parent_ref=parent_ref)
+            subcollections = doc_ref.collections()
+            for subcollection in subcollections:
+                sub_document_names = self.get_document_names(subcollection.id, parent_ref=doc_ref)
+                sub_data = {}
+                for sub_document_name in sub_document_names:
+                    sub_data[sub_document_name] = self.get_document_data(subcollection.id, sub_document_name,
+                                                                         with_id=with_id, parent_ref=doc_ref,
+                                                                         with_subcollections=with_subcollections)
+                data[subcollection.id] = sub_data
+        return data
