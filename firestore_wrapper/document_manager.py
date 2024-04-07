@@ -11,14 +11,15 @@ Validator = Callable[[dict], None]
 
 class DocumentManager(CollectionManager):
 
-    def __init__(self, credentials_path: str, database: str = None):
+    def __init__(self, credentials_path: str, database: str = None, collections: list[str] = None):
         """
-        Initializes the DocumentManager instance.
+        Initializes the CollectionManager instance.
 
         :param credentials_path: Path to the Google Cloud service account credentials JSON file.
         :param database: Optional database URL. If provided, this database is used instead of the default.
+        :param collections: Optional list of collection names to initialize.
         """
-        super().__init__(credentials_path=credentials_path, database=database)
+        super().__init__(credentials_path=credentials_path, database=database, collections=collections)
 
     def create_doc_ref(self, collection_name: str, document_name: str = None,
                        parent_ref: DocumentReference = None) -> DocumentReference:
