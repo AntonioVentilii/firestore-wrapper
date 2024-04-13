@@ -27,7 +27,7 @@ class BackupManager(CollectionManager):
     @property
     def backup_folder(self) -> str:
         v = self._backup_folder
-        if '~' in v:
+        if v is not None and '~' in v:
             v = os.path.expanduser(v)
         return v
 
